@@ -62,8 +62,9 @@ jobs:
           # Enable the NimBLE backend (coexists with native USB HID, half the RAM)
           sed -i 's|^[[:space:]]*//[[:space:]]*#define USE_NIMBLE|#define USE_NIMBLE|' "$HDR"
           grep -q "^#define USE_NIMBLE" "$HDR" || sed -i '1i #define USE_NIMBLE' "$HDR"
-          # "Just Works" pairing (no passkey IO on this device)
-          sed -i 's|setSecurityAuth(true, true, true)|setSecurityAuth(true, false, false)|' "$SRC"
+          # LE Secure Connections "Just Works" pairing (no passkey IO on this
+          # device; sc=true so macOS/iOS also enable HID).
+          sed -i 's|setSecurityAuth(true, true, true)|setSecurityAuth(true, false, true)|' "$SRC"
 
       - name: Compile firmware
         run: |

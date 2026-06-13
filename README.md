@@ -94,7 +94,7 @@ The stock **ESP32 BLE Keyboard** ships with the heavyweight Bluedroid backend an
 
 // BleKeyboard.cpp  (inside begin(), the USE_NIMBLE branch)
 - BLEDevice::setSecurityAuth(true, true, true);
-+ BLEDevice::setSecurityAuth(true, false, false);   // "Just Works" pairing
++ BLEDevice::setSecurityAuth(true, false, true);   // SC "Just Works" pairing
 ```
 
 ### 3. Arduino IDE board settings (Tools menu)

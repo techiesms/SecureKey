@@ -46,6 +46,8 @@ extern "C" {
   int  hidBleStarted();
   void hidBleSetAndroidFix(int on);   // UK/Android @<->" keycode swap
   void hidBlePeerAddr(char *out, int n);   // connecting peer's BT address
+  void hidBleSettleReset();           // re-arm typing settle on disconnect
+  void hidBleTune();                  // request tight conn interval at connect
 }
 
 #include <Arduino.h>
@@ -439,7 +441,13 @@ void bleConnectGate() {
   uint32_t t0 = millis();
   int choice = 1;                            // default = reject (timeout/drop)
   while (millis() - t0 < 20000) {
-    if (!hidBleConnected()) { choice = 1; break; }   // peer gave up
+    if (!hidBleConnected()) {
+      // Tolerate a brief flap during the pairing/bonding handshake — only
+      // give up if the peer stays gone, so the prompt doesn't flicker.
+      uint32_t d0 = millis();
+      while (!hidBleConnected() && millis() - d0 < 1800) delay(60);
+      if (!hidBleConnected()) { choice = 1; break; }
+    }
     if (ftReadTouch(x, y)) {
       uint16_t py = y;
       while (ftReadTouch(x, y)) delay(8);    // wait for release
@@ -697,15 +705,24 @@ void loop() {
       if (!wantBle && hidBleStarted()) { hidBleEnd(); bleAuthorized = false; }
     }
 
+    static uint32_t connRisingAt = 0;
     bool nowConn = settings.bleEnabled && hidBleCompiled() && hidBleConnected();
+    if (nowConn && !btConnected) {                          // rising edge
+      connRisingAt = millis();
+      hidBleTune();        // pin a tight interval now, well before typing
+    }
     if (nowConn != btConnected) {
       btConnected = nowConn;
       if (current != SCR_FLASH) { drawStatusBar(); flushScreen(); }
     }
-    if (!nowConn) bleAuthorized = false;        // forget auth when peer drops
+    if (!nowConn) { bleAuthorized = false; hidBleSettleReset(); }  // peer dropped
 
+    // Only prompt once the link has been STABLE for a moment — early in a BLE
+    // connection the link can briefly flap (pairing/bonding handshake), and
+    // prompting on that flap made the Accept page flash then re-appear.
+    bool stable = nowConn && (millis() - connRisingAt > 900);
     bool unlocked = (current != SCR_LOCK && current != SCR_PIN);
-    if (nowConn && !bleAuthorized && unlocked && !screenOff &&
+    if (stable && !bleAuthorized && unlocked && !screenOff &&
         millis() >= bleBlockUntil && millis() >= bleGateSnooze) {
       bleConnectGate();                         // blocking Accept/Reject/Block
     }

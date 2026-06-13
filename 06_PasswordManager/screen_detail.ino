@@ -9,7 +9,7 @@
 static PassRecord detailRec;
 static bool       passRevealed = false;
 
-#define DET_ROW_H   54
+#define DET_ROW_H   48
 #define DET_TOP     (STATUS_H + NAV_H + 8)
 #define ROW_Y(n)    (DET_TOP + (n) * (DET_ROW_H + 6))
 

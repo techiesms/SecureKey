@@ -28,8 +28,15 @@
   // "...gmmmmm" bug). kb.write() sends press+release back-to-back (same
   // event), so we DON'T use it — we press, hold past one connection interval,
   // then send a clean "all keys up" report, then a small gap before the next.
-  static const uint16_t BLE_HOLD_MS = 32;   // key held (> typical 15-30ms interval)
-  static const uint16_t BLE_GAP_MS  = 12;   // quiet gap before the next key
+  // Key-down must be held LONGER than the BLE connection interval so the
+  // key-down and key-up reports land in different connection events — else the
+  // host misses the release and auto-repeats (the Windows "likkkke" bug). 45ms
+  // safely spans the typical 15-48ms interval even if the tighter interval we
+  // request at connect-time gets rejected.
+  static const uint16_t BLE_HOLD_MS  = 45;   // key held
+  static const uint16_t BLE_GAP_MS   = 25;   // quiet gap so each report is delivered
+  static const uint16_t BLE_SETTLE_MS = 240; // wait before the 1st key (host subscribe)
+  static bool everConn = false;              // have we ever been connected this link?
 
   // Type one character. In "Android fix" mode, '@' and '"' are sent as the
   // raw keycodes that produce them on a UK/Android host (where Shift+2 = "
@@ -55,20 +62,32 @@
     kb.releaseAll();
     delay(BLE_GAP_MS);
   }
-
-  // Ask the peer for a tighter connection interval so each key report is
-  // delivered promptly (and the hold above reliably spans an interval).
-  static void bleFastConn() {
-    NimBLEServer *srv = NimBLEDevice::getServer();
-    if (!srv) return;
-    std::vector<uint16_t> peers = srv->getPeerDevices();
-    if (peers.empty()) return;
-    // min 15ms, max 30ms, latency 0, supervision timeout 4s
-    srv->updateConnParams(peers[0], 12, 24, 0, 400);
-  }
 #endif
 
 extern "C" {
+
+// Re-arm the connection settle delay (called by the main loop when it sees a
+// peer disconnect, so the next connection waits for a fresh HID subscription).
+void hidBleSettleReset() {
+#if HID_BLE_ENABLE
+  everConn = false;
+#endif
+}
+
+// Request a tight connection interval. Called ONCE by the main loop when a new
+// peer connects — NOT during typing (renegotiating mid-stream drops reports).
+// By the time the user accepts and taps a field, the interval has settled, so
+// our key-hold reliably spans it and typing is prompt.
+void hidBleTune() {
+#if HID_BLE_ENABLE
+  NimBLEServer *srv = NimBLEDevice::getServer();
+  if (!srv) return;
+  std::vector<uint16_t> peers = srv->getPeerDevices();
+  if (peers.empty()) return;
+  // min 15ms, max 22.5ms, latency 0, supervision timeout 4s
+  srv->updateConnParams(peers[0], 12, 18, 0, 400);
+#endif
+}
 
 // Toggle the UK/Android @ <-> " keycode swap (called when the Settings
 // "Android @ Fix" toggle changes, and once at boot from loadSettings()).
@@ -103,6 +122,7 @@ void hidBleBegin() {
 
 void hidBleEnd() {
 #if HID_BLE_ENABLE
+  everConn = false;                  // next connection re-arms the settle wait
   if (!everStarted || !active) { active = false; return; }
   Serial.println("[BLE] stop: drop peers + stop advertising");
   NimBLEServer *srv = NimBLEDevice::getServer();
@@ -133,11 +153,16 @@ void hidBlePrint(const char *s) {
     Serial.println("[BLE]   isConnected()=false — aborting print");
     return;
   }
-  bleFastConn();   // request a snappy connection interval
-  delay(80);       // let the host fully ready its HID stack
+  // Settle: the FIRST type after a fresh connection must wait for the host to
+  // finish subscribing to our HID input report — otherwise the opening keys
+  // are dropped (Mac types nothing / only the start of the string lands).
+  // Later types on the same link skip the long wait.
+  delay(everConn ? 60 : BLE_SETTLE_MS);
+  everConn = true;
   int n = strlen(s);
   Serial.printf("[BLE]   sending %d chars... (androidFix=%d)\n", n, androidFix);
   kb.releaseAll();                 // make sure nothing is held before we start
+  delay(BLE_GAP_MS);
   for (int i = 0; i < n; i++) bleType(s[i]);
   kb.releaseAll();                 // final safety key-up
   Serial.println("[BLE]   done");
@@ -153,9 +178,10 @@ void hidBleQuickFill(const char *user, const char *pass) {
     Serial.println("[BLE] quickFill aborted — not connected");
     return;
   }
-  bleFastConn();
-  delay(80);
+  delay(everConn ? 60 : BLE_SETTLE_MS);
+  everConn = true;
   kb.releaseAll();
+  delay(BLE_GAP_MS);
   for (const char *p = user; *p; p++) bleType(*p);
   bleRawKey(KEY_TAB);
   for (const char *p = pass; *p; p++) bleType(*p);
