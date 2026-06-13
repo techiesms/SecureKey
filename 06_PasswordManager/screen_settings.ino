@@ -139,7 +139,7 @@ void drawSettings() {
   Row rows[SET_ROW_COUNT] = {
     {"Bluetooth",       0, settings.bleEnabled,      0, nullptr},
     {"USB HID",         0, settings.usbHidEnabled,   0, nullptr},
-    {"Android @ Fix",   0, settings.androidFix,      0, nullptr},
+    {"Android",         0, settings.androidFix,      0, nullptr},
     {"2-Tap Sleep",     0, settings.doubleTapSleep,  0, nullptr},
     {"Auto-Lock",       3, false, 0, autoLockLabel()},
     {"Brightness",      1, false, settings.brightness, nullptr},

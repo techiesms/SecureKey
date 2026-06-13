@@ -110,6 +110,17 @@ void drawPin() {
   }
 
   drawPinInputBox();
+
+  // Show how many tries remain before the next lockout (like a phone PIN).
+  // 0,1,2 fails are "free"; the 3rd locks for 30 s. After a lockout, each
+  // further wrong try locks again immediately (1 left).
+  if (pinFails > 0) {
+    uint8_t left = (pinFails < 3) ? (uint8_t)(3 - pinFails) : 1;
+    char ab[28];
+    snprintf(ab, sizeof(ab), "%u attempt%s left", left, left == 1 ? "" : "s");
+    textCenter(STATUS_H + 100 + pinYOffset, ab, 1, left <= 1 ? C_RED : C_GRAY_4);
+  }
+
   for (uint8_t i = 0; i < 12; i++) drawPinKey(i, false);
   flushScreen();
 }

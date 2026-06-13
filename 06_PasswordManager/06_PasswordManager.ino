@@ -257,7 +257,8 @@ void fadeIn()  {}
 void pushNav(Screen s) {
   if (navTop < 9) navStack[++navTop] = s;
   current = s;
-  if (s == SCR_LIST)     { listScrollY = 0; listVelocity = 0; buildList(); }
+  if (s == SCR_LIST)     { listScrollY = 0; listVelocity = 0;
+                           listSearchMode = false; listQuery[0] = 0; buildList(); }
   if (s == SCR_DETAIL)   { detailInit(); }
   if (s == SCR_SETTINGS) { extern int32_t settingsScrollY; settingsScrollY = 0; }
   if (s == SCR_PIN)      { pinSlideIn(); return; }   // animated slide-up
@@ -268,6 +269,9 @@ void popNav() {
   if (navTop > 0) {
     navTop--;
     current = navStack[navTop];
+    // Returning to the list (e.g. from a detail view) should NOT leave the
+    // search keyboard up — hide it so the user doesn't have to tap OK.
+    if (current == SCR_LIST) listSearchMode = false;
     drawAll();
   }
 }
@@ -584,6 +588,13 @@ void setup() {
 
   loadSettings();
   homeLoadOrder();                 // restore the user's home tile arrangement
+
+  // Re-arm the PIN lockout across power cycles. millis() resets on reboot, so
+  // without this a power-cycle would bypass the "wait 30s" penalty. The fail
+  // count is persisted (NVS), so if we were still locked out when powered off,
+  // restart the countdown — pulling the plug no longer skips the wait.
+  if (pinFails >= 3) pinLockUntil = millis() + pinLockDelayMs(pinFails);
+
   out->Display_Brightness(settings.brightness);
 
   Wire.begin(IIC_SDA, IIC_SCL, 400000);
