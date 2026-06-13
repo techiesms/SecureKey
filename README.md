@@ -9,7 +9,7 @@ Built on a 1.8" AMOLED touchscreen ESP32‑S3. No cloud. No app account. Your va
 [![Platform](https://img.shields.io/badge/platform-ESP32--S3-E7352C?logo=espressif&logoColor=white)](https://www.espressif.com/en/products/socs/esp32-s3)
 [![Framework](https://img.shields.io/badge/framework-Arduino-00979D?logo=arduino&logoColor=white)](https://github.com/espressif/arduino-esp32)
 [![Language](https://img.shields.io/badge/language-C%2B%2B-00599C?logo=cplusplus&logoColor=white)](#)
-[![Build](https://github.com/your-username/SecureKey/actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
+[![Build](https://github.com/Shubhjaiswal408/SecureKey/actions/workflows/build.yml/badge.svg)](https://github.com/Shubhjaiswal408/SecureKey/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Capacity](https://img.shields.io/badge/vault-30%2C000%20entries-blueviolet)](#-storage--data-model)
