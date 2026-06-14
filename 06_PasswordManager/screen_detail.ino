@@ -7,7 +7,6 @@
 // =============================================================
 
 static PassRecord detailRec;
-static bool       passRevealed = false;
 
 // Rows stay full-size (54). Only the gaps between them were tightened (6→3)
 // so the bottom action bar clears the AMOLED's rounded corner with a proper
@@ -39,27 +38,25 @@ static void drawDetailRow(int16_t y, const char *label,
 
   // Value (bottom, larger)
   gfx->setTextSize(2); gfx->setTextColor(C_WHITE);
-  if (isPass && !passRevealed) {
-    int dots = min((int)strlen(value), 14);
-    char buf[20]; memset(buf, 0, sizeof(buf));
-    for (int i = 0; i < dots; i++) buf[i] = '*';
-    gfx->setCursor(x + 14, y + 26);
-    gfx->print(buf);
+  if (isPass) {
+    // Always show as filled dots — password is never displayed in plain text
+    int n = min((int)strlen(value), 10);
+    int16_t dotX = x + 16;
+    int16_t dotY = y + DET_ROW_H - 18;
+    for (int i = 0; i < n; i++)
+      gfx->fillCircle(dotX + i * 17, dotY, 5, C_WHITE);
   } else {
     textClipped(x + 14, y + 26, value[0] ? value : "-",
                 2, C_WHITE, w - 62);
   }
 
-  // Right action hint — blue so it reads as tappable
+  // Right action hint
   gfx->setTextSize(1); gfx->setTextColor(C_BLUE);
   gfx->setCursor(x + w - 38, y + DET_ROW_H/2 - 4);
-  gfx->print(isPass && !passRevealed ? "SHOW" : "TYPE");
+  gfx->print("TYPE");
 }
 
-// Reset on every fresh entry to the detail screen (called from pushNav).
-// NOT inside drawDetail — that would un-reveal the password on every
-// repaint, defeating the SHOW tap.
-void detailInit() { passRevealed = false; }
+void detailInit() { /* nothing to reset */ }
 
 void drawDetail() {
   if (!dbLoadRecord(detailId, detailRec)) {
@@ -199,7 +196,6 @@ void onTapDetail(int16_t tx, int16_t ty) {
   // Back (top-left)
   if (ty >= STATUS_H + 2 && ty < STATUS_H + NAV_H - 2
       && tx >= SAFE_PAD && tx < SAFE_PAD + 46) {
-    passRevealed = false;
     popNav(); return;
   }
 
@@ -238,18 +234,13 @@ void onTapDetail(int16_t tx, int16_t ty) {
     switch (i) {
       case 0: val = detailRec.title;    break;
       case 1: val = detailRec.username; break;
-      case 2: // Password — first tap reveals, second tap types
-        if (!passRevealed) {
-          passRevealed = true;
-          drawDetail();
-          return;
-        }
-        val = detailRec.password; break;
-      case 3: val = detailRec.url;  break;
-      case 4: val = detailRec.note; break;
+      case 2: val = detailRec.password; break;   // types directly — never revealed
+      case 3: val = detailRec.url;      break;
+      case 4: val = detailRec.note;     break;
     }
 
-    if (val && val[0]) typeViaHID(val);
+    extern void typeReturnViaHID();
+    if (val && val[0]) { typeViaHID(val); typeReturnViaHID(); }
     drawDetail();
     return;
   }

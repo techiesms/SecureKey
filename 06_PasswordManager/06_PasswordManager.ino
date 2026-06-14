@@ -49,6 +49,9 @@ extern "C" {
   void hidBleSettleReset();           // re-arm typing settle on disconnect
   void hidBleTune();                  // request tight conn interval at connect
   void hidBleForget();                // clear all BLE bonds (re-pair fresh)
+  void hidBleDisconnectPeer();        // kick current peer, keep advertising
+  void hidBleReturn();                // send Return key over BLE
+  void hidUsbReturn();                // send Return key over USB
 }
 
 #include <Arduino.h>
@@ -86,9 +89,10 @@ bool     btConnected = false;
 // the user taps "Accept" on the on-device request prompt (which only appears
 // after the PIN has been entered / device unlocked). "Block 5 min" puts BLE
 // dark for 5 minutes so a pushy host stops re-requesting.
-bool     bleAuthorized = false;   // true once the user accepts this connection
-uint32_t bleBlockUntil = 0;       // millis() until which BLE stays off (block)
-uint32_t bleGateSnooze = 0;       // after REJECT: don't re-prompt before this
+bool     bleAuthorized  = false;          // true once the user accepts this connection
+uint32_t bleBlockUntil  = 0;             // millis() until which this peer is silently kicked
+uint32_t bleGateSnooze  = 0;            // after REJECT: don't re-prompt before this
+char     bleBlockedAddr[24] = {0};       // MAC of the specifically blocked peer
 
 // PIN
 char     pinEntry[5] = {0};
@@ -403,6 +407,19 @@ void typeViaHID(const char *s) {
   drawAll();
 }
 
+// ── Enter key dispatcher ──────────────────────────────────────────────
+// Sends a bare Return keystroke on whichever transport is active.
+// Called by screen_detail.ino after every TYPE action.
+void typeReturnViaHID() {
+  if (settings.bleEnabled && hidBleCompiled() && hidBleConnected() && bleAuthorized) {
+    hidBleReturn();
+    return;
+  }
+  if (settings.usbHidEnabled && hidUsbCompiled() && hidUsbMounted()) {
+    hidUsbReturn();
+  }
+}
+
 // ── BLE connection request gate (Accept / Reject / Block 5 min) ───────
 // A phone connected over BLE but hasn't been authorised yet. Show an
 // on-device prompt; nothing is typed until the user taps ACCEPT. This is
@@ -473,10 +490,11 @@ void bleConnectGate() {
     Serial.println("[BLE] connection ACCEPTED by user");
   } else if (choice == 2) {                  // BLOCK 5 min
     bleAuthorized = false;
-    bleBlockUntil = millis() + 300000UL;     // BLE stays dark 5 minutes
-    if (hidBleCompiled()) hidBleEnd();
+    bleBlockUntil = millis() + 300000UL;     // this MAC silently kicked for 5 min
+    hidBlePeerAddr(bleBlockedAddr, sizeof(bleBlockedAddr));
+    hidBleDisconnectPeer();                  // kick only this peer, BLE keeps advertising
     ledSet(0xFF0000, 250);
-    Serial.println("[BLE] connection BLOCKED for 5 min");
+    Serial.printf("[BLE] BLOCKED %s for 5 min (BLE still up for other devices)\n", bleBlockedAddr);
   } else {                                   // REJECT
     // Snooze the gate for 2 minutes so a paired phone that auto-reconnects
     // doesn't spam the prompt every 20 seconds.  Typing stays blocked
@@ -715,8 +733,9 @@ void loop() {
     lastBleMs = millis();
 
     if (hidBleCompiled()) {
-      // Advertise when BLE is enabled AND not inside a 5-minute block window.
-      bool wantBle = settings.bleEnabled && (millis() >= bleBlockUntil);
+      // Advertise whenever BLE is enabled. The block window now only silently
+      // kicks ONE specific MAC — it no longer stops BLE for ALL devices.
+      bool wantBle = settings.bleEnabled;
       if (wantBle && !hidBleStarted())  hidBleBegin();
       if (!wantBle && hidBleStarted()) { hidBleEnd(); bleAuthorized = false; }
     }
@@ -738,9 +757,19 @@ void loop() {
     // prompting on that flap made the Accept page flash then re-appear.
     bool stable = nowConn && (millis() - connRisingAt > 900);
     bool unlocked = (current != SCR_LOCK && current != SCR_PIN);
-    if (stable && !bleAuthorized && unlocked && !screenOff &&
-        millis() >= bleBlockUntil && millis() >= bleGateSnooze) {
-      bleConnectGate();                         // blocking Accept/Reject/Block
+    if (stable && !bleAuthorized && unlocked && !screenOff && millis() >= bleGateSnooze) {
+      // If this is the specifically blocked MAC and the block window hasn't
+      // expired, silently kick it — no prompt, BLE stays up for other devices.
+      if (millis() < bleBlockUntil && bleBlockedAddr[0]) {
+        char curAddr[24]; hidBlePeerAddr(curAddr, sizeof(curAddr));
+        if (strcmp(curAddr, bleBlockedAddr) == 0) {
+          hidBleDisconnectPeer();   // silent kick, no gate shown
+        } else {
+          bleConnectGate();         // different device — show normal gate
+        }
+      } else {
+        bleConnectGate();           // block expired or no blocked addr — show gate
+      }
     }
   }
 

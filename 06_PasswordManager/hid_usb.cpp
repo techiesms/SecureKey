@@ -137,4 +137,14 @@ int hidUsbMounted() {
 #endif
 }
 
+// Send a bare Return keystroke over USB.
+void hidUsbReturn() {
+#if HID_USB_ENABLE
+  if (!started || !tud_mounted()) return;
+  delay(60);
+  kb.write(KEY_RETURN);
+#else
+#endif
+}
+
 }  // extern "C"

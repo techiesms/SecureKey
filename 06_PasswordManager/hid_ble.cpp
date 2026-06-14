@@ -246,6 +246,30 @@ void hidBlePeerAddr(char *out, int n) {
   if (!out[0]) strncpy(out, "unknown", n - 1), out[n - 1] = 0;
 }
 
+// Disconnect only the current peer — advertising keeps running so OTHER
+// devices can still connect.  Used by BLOCK so only that one MAC is kicked.
+void hidBleDisconnectPeer() {
+#if HID_BLE_ENABLE
+  if (!everStarted || !active) return;
+  NimBLEServer *srv = NimBLEDevice::getServer();
+  if (!srv) return;
+  std::vector<uint16_t> peers = srv->getPeerDevices();
+  for (uint16_t id : peers) srv->disconnect(id);
+  if (!peers.empty()) delay(200);
+  everConn = false;
+  Serial.println("[BLE] peer kicked (advertising continues for other devices)");
+#endif
+}
+
+// Send a bare Return keystroke — called after typing a field so the host
+// advances to the next field or submits the form.
+void hidBleReturn() {
+#if HID_BLE_ENABLE
+  if (!active || !kb.isConnected()) return;
+  bleRawKey(KEY_RETURN);
+#endif
+}
+
 // Is BLE currently active (advertising or connected)?  Lets the main loop
 // manage the radio live (toggle on/off, 5-min block window) without rebooting.
 int hidBleStarted() {
