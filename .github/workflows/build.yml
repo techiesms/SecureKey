@@ -18,8 +18,15 @@ jobs:
 
       - name: Install arduino-cli
         run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh -s
-          echo "$PWD/bin" >> "$GITHUB_PATH"
+          # Pin to v0.35.3 — the last stable pre-1.0 release.
+          # arduino-cli v1.x introduced stricter FQBN option validation that
+          # breaks esp32:esp32@2.0.16 (ZigbeeMode appears in the 3.x index but
+          # not in 2.0.16, and the new CLI rejects it as "invalid option").
+          curl -L -o /tmp/arduino-cli.tar.gz \
+            https://github.com/arduino/arduino-cli/releases/download/v0.35.3/arduino-cli_0.35.3_Linux_64bit.tar.gz
+          mkdir -p "$HOME/bin"
+          tar -xzf /tmp/arduino-cli.tar.gz -C "$HOME/bin"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
 
       - name: Install ESP32 core 2.0.16
         run: |
