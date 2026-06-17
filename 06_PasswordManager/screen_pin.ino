@@ -133,7 +133,7 @@ void drawPin() {
 //   • Cubic EASE-OUT — shoots up fast then settles, so it feels snappy
 //     ("fata-fat") instead of a slow constant crawl.
 void pinSlideIn() {
-  const int     STEPS = 8;
+  const int     STEPS = 5;                    // fewer frames → snappier, less touch-block
   const int16_t START = 300;                 // keypad starts just off the bottom
   for (int i = 1; i <= STEPS; i++) {
     float t = (float)i / STEPS;              // 0 → 1
@@ -155,8 +155,10 @@ void onTapPin(int16_t tx, int16_t ty) {
     if (tx < x || tx >= x + PK_W) continue;
     if (ty < y || ty >= y + PK_H) continue;
 
+    // Brief press flash only — a long delay here blocks pollTouch() and makes
+    // fast PIN entry drop digits, so keep it short ("fata-fat").
     drawPinKey(i, true); flushScreen();
-    delay(60);
+    delay(15);
 
     const char *k = PKEYS[i].label;
     if (strcmp(k, "BS") == 0) {

@@ -409,11 +409,12 @@ void onTapSettings(int16_t tx, int16_t ty) {
   }
   y += step;
 
-  // Android @ Fix — swaps @ and " keycodes on the BLE path for UK/Android
-  // hosts (where the US Shift+2 produces " instead of @).
+  // Android @ Fix — swaps @ and " keycodes on BOTH the BLE and USB paths for
+  // UK/Android hosts (where the US Shift+2 produces " instead of @).
   if (ty >= y && ty < y + SET_ITEM_H) {
     settings.androidFix = !settings.androidFix;
     hidBleSetAndroidFix(settings.androidFix ? 1 : 0);
+    hidUsbSetAndroidFix(settings.androidFix ? 1 : 0);
     saveSettings();
     drawSettings(); return;
   }

@@ -36,6 +36,7 @@ extern "C" {
   void hidUsbQuickFill(const char *user, const char *pass);
   int  hidUsbCompiled();
   int  hidUsbMounted();    // 1 once a USB host has enumerated the keyboard
+  void hidUsbSetAndroidFix(int on);   // UK/Android @<->" keycode swap (USB)
 
   void hidBleBegin();
   void hidBleEnd();
@@ -62,6 +63,8 @@ extern "C" {
 #include <Preferences.h>
 #include "pin_config.h"
 #include "theme.h"
+#include "esp_sleep.h"
+#include "driver/rtc_io.h"
 
 // HID transports are isolated to hid_usb.cpp / hid_ble.cpp — see above
 
@@ -163,6 +166,7 @@ void drawAll();
 void drawStatusBar();
 void pollTouch();
 void popToLock();
+void lightSleep();   void enterDeepSleep();   void powerOff();
 
 // gfx_lib helpers used here
 void textCenter(int16_t y, const char *s, uint8_t sz,
@@ -213,10 +217,19 @@ void dispatchTap(int16_t tx, int16_t ty) {
   static int16_t lastTapX = -999, lastTapY = -999;
   uint32_t now = millis();
   if (screenOff) {
-    // Any tap wakes (does NOT also activate whatever was under the finger)
-    out->Display_Brightness(settings.brightness);
-    screenOff = false;
-    lastTapTime = now; lastTapX = tx; lastTapY = ty;
+    // Device is OFF (light sleep). A SINGLE tap must NOT wake it — only a
+    // double-tap (when 2-Tap Sleep is on) or the side button. Track taps and
+    // wake on the 2nd quick one in roughly the same spot.
+    static uint32_t offTapMs = 0;
+    static int16_t  offTapX = -999, offTapY = -999;
+    bool sameSpot = (abs(tx - offTapX) < 40 && abs(ty - offTapY) < 40);
+    if (settings.doubleTapSleep && sameSpot && (now - offTapMs) < 400) {
+      out->Display_Brightness(settings.brightness);
+      screenOff = false;
+      offTapMs = 0; offTapX = -999; offTapY = -999;
+    } else {
+      offTapMs = now; offTapX = tx; offTapY = ty;   // 1st tap — wait for the 2nd
+    }
     return;
   }
   // Double-tap sleep: only on passive list-style screens, AND only when both
@@ -227,10 +240,8 @@ void dispatchTap(int16_t tx, int16_t ty) {
   bool sameSpot = (abs(tx - lastTapX) < 36 && abs(ty - lastTapY) < 36);
   if (settings.doubleTapSleep && sleepAllowed && sameSpot &&
       (now - lastTapTime) < 280) {
-    out->Display_Brightness(0);          // genuinely dark (fade is now a no-op)
-    screenOff = true;
-    popToLock();
     lastTapTime = 0; lastTapX = -999; lastTapY = -999;
+    lightSleep();        // BLE off + panel dark; double-tap or button wakes
     return;
   }
   lastTapTime = now; lastTapX = tx; lastTapY = ty;
@@ -566,6 +577,7 @@ void loadSettings() {
   strncpy(settings.pin, p.c_str(), 4); settings.pin[4] = 0;
   prefs.end();
   hidBleSetAndroidFix(settings.androidFix ? 1 : 0);
+  hidUsbSetAndroidFix(settings.androidFix ? 1 : 0);
 }
 void saveSettings() {
   prefs.begin("skset", false);
@@ -633,6 +645,13 @@ void setup() {
   if (settings.brightness < 20) { settings.brightness = 140; saveSettings(); }
   out->Display_Brightness(settings.brightness);
 
+  // Boot splash plays only on a true power-on / reset. When we woke from deep
+  // sleep (side button), skip it and come up dark, straight to the lock screen.
+  bool fromDeepSleep = (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_UNDEFINED);
+  if (fromDeepSleep) out->Display_Brightness(0);
+  else               bootRevealIn();
+  uint32_t bootSplashMs = millis();
+
   Wire.begin(IIC_SDA, IIC_SCL, 400000);
   pinMode(USER_BTN_PIN, INPUT_PULLUP);
 
@@ -658,9 +677,18 @@ void setup() {
     Serial.printf("[DB] %u passwords loaded\n", passwordCount);
   }
 
+  // Keep the logo a beat (it's been up during init), play the booting dots,
+  // then power-down fade. Skipped entirely on a deep-sleep wake.
+  if (!fromDeepSleep) {
+    while (millis() - bootSplashMs < 250) delay(10);
+    bootDots(1800);
+    bootFadeOut();
+  }
+
   // Draw the UI immediately so the screen is always visible, even if BLE
   // has trouble coming up below.
   drawAll();
+  out->Display_Brightness(settings.brightness);
 
   // BLE LAST — after the screen is up, so a BLE init hiccup/brownout can't
   // leave you staring at a black screen.  RECOVERY: hold the side button
@@ -674,6 +702,45 @@ void setup() {
     hidBleBegin();
     Serial.println("[BLE] boot init done");
   }
+}
+
+// ── Power / sleep ─────────────────────────────────────────────────────
+// Light sleep: lock, drop BLE, dark panel — but the MCU + touch stay on so a
+// double-tap (when 2-Tap Sleep is on) or the side button wakes it quickly.
+void lightSleep() {
+  homeExitReorder();
+  navTop = 0; navStack[0] = SCR_LOCK; current = SCR_LOCK; pinLen = 0;
+  drawAll();
+  if (settings.bleEnabled && hidBleCompiled()) {
+    hidBleEnd(); bleAuthorized = false; btConnected = false;
+  }
+  led.clear(); led.show(); ledClearAt = 0;
+  out->Display_Brightness(0);
+  screenOff = true;
+}
+
+// Deep sleep: everything off (BLE, LED, panel) — lowest power. Only the side
+// button (GPIO8) wakes it, and waking re-boots (setup() skips the splash).
+void enterDeepSleep() {
+  Serial.println("[PWR] deep sleep — button-only wake");
+  if (settings.bleEnabled && hidBleCompiled()) hidBleEnd();
+  led.clear(); led.show();
+  out->Display_Brightness(0);
+  digitalWrite(LCD_EN, LOW);                              // cut panel power
+  delay(20);
+  while (digitalRead(USER_BTN_PIN) == LOW) delay(10);     // wait for release
+  delay(60);
+  rtc_gpio_pullup_en((gpio_num_t)USER_BTN_PIN);
+  rtc_gpio_pulldown_dis((gpio_num_t)USER_BTN_PIN);
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)USER_BTN_PIN, 0);  // wake on press (LOW)
+  esp_deep_sleep_start();                                 // does not return
+}
+
+// The side button's "power off": deep sleep for max battery, or light sleep if
+// 2-Tap Sleep is on (so a double-tap can wake it too).
+void powerOff() {
+  if (settings.doubleTapSleep) lightSleep();
+  else                         enterDeepSleep();
 }
 
 // ── Loop ─────────────────────────────────────────────────────────────
@@ -725,13 +792,19 @@ void loop() {
     }
   }
 
-  // SW2 physical → lock
+  // SW2 physical → power button. Press to turn the device OFF (locked + dark).
+  // 2-Tap Sleep ON → light sleep (a double-tap or the button wakes it). 2-Tap
+  // OFF → DEEP sleep: BLE/LED/panel all off, button-only wake, max battery.
+  // (Deep sleep wakes by re-booting, but setup() skips the splash on wake.)
   static bool btnLast = HIGH;
   bool btnNow = digitalRead(USER_BTN_PIN);
   if (btnLast == HIGH && btnNow == LOW) {
-    if (current != SCR_LOCK) {
-      popToLock();
-      ledSet(0xFF0000, 200);
+    if (screenOff) {
+      // Light-sleep wake (the side button always wakes).
+      out->Display_Brightness(settings.brightness);
+      screenOff = false;
+    } else {
+      powerOff();        // deep or light sleep per the 2-Tap setting
     }
   }
   btnLast = btnNow;
@@ -757,9 +830,9 @@ void loop() {
     lastBleMs = millis();
 
     if (hidBleCompiled()) {
-      // Advertise whenever BLE is enabled. The block window now only silently
-      // kicks ONE specific MAC — it no longer stops BLE for ALL devices.
-      bool wantBle = settings.bleEnabled;
+      // Advertise whenever BLE is enabled AND the device is awake. In sleep
+      // (screenOff) BLE is forced off to save battery; it resumes on wake.
+      bool wantBle = settings.bleEnabled && !screenOff;
       if (wantBle && !hidBleStarted())  hidBleBegin();
       if (!wantBle && hidBleStarted()) { hidBleEnd(); bleAuthorized = false; }
     }
@@ -811,15 +884,7 @@ void loop() {
       current != SCR_LOCK && current != SCR_PIN &&
       current != SCR_FLASH && current != SCR_WIFI &&
       (millis() - lastActivityMs) > (uint32_t)settings.autoLockSec * 1000UL) {
-    homeExitReorder();
-    navTop = 0;
-    navStack[0] = SCR_LOCK;
-    current     = SCR_LOCK;
-    pinLen      = 0;
-    drawAll();
-    out->Display_Brightness(0);      // genuinely dark until next tap
-    screenOff = true;
-    ledSet(0xFF0000, 150);
+    lightSleep();     // lock + BLE off + panel dark; double-tap or button wakes
   }
 
   delay(1);
