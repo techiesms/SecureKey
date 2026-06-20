@@ -1,0 +1,28 @@
+{
+  "name": "SecureKey",
+  "version": "1.0.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "./06_PasswordManager.ino.bootloader.bin",
+          "offset": "0x0"
+        },
+        {
+          "path": "./06_PasswordManager.ino.partitions.bin",
+          "offset": "0x8000"
+        },
+        {
+          "path": "./boot_app0.bin",
+          "offset": "0xe000"
+        },
+        {
+          "path": "./06_PasswordManager.ino.bin",
+          "offset": "0x10000"
+        }
+      ]
+    }
+  ]
+}
