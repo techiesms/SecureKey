@@ -7,19 +7,19 @@
       "chipFamily": "ESP32-S3",
       "parts": [
         {
-          "path": "firmware//06_PasswordManager.ino.bootloader.bin",
+          "path": "firmware/06_PasswordManager.ino.bootloader.bin",
           "offset": "0x0"
         },
         {
-          "path": "firmware//06_PasswordManager.ino.partitions.bin",
+          "path": "firmware/06_PasswordManager.ino.partitions.bin",
           "offset": "0x8000"
         },
         {
-          "path": "firmware//boot_app0.bin",
+          "path": "firmware/boot_app0.bin",
           "offset": "0xe000"
         },
         {
-          "path": "firmware//06_PasswordManager.ino.bin",
+          "path": "firmware/06_PasswordManager.ino.bin",
           "offset": "0x10000"
         }
       ]
