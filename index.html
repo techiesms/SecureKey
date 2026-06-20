@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -9,8 +10,8 @@
 <meta name="description" content="Flash SecureKey firmware directly from your browser using ESP Web Tools.">
 
 <script
-type="module"
-src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
+  type="module"
+  src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,12 +21,11 @@ src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
 :root{
     --bg:#0f172a;
     --card:#111827;
-    --card2:#1f2937;
+    --border:#334155;
     --text:#f8fafc;
     --muted:#94a3b8;
     --primary:#2563eb;
     --primary2:#3b82f6;
-    --border:#334155;
 }
 
 *{
@@ -34,20 +34,25 @@ src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
     box-sizing:border-box;
 }
 
+html{
+    scroll-behavior:smooth;
+}
+
 body{
     font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
 
     background:
-    linear-gradient(
-        180deg,
-        #0f172a,
-        #111827
-    );
+        linear-gradient(
+            180deg,
+            #0f172a,
+            #111827
+        );
 
     color:var(--text);
     min-height:100vh;
@@ -60,47 +65,139 @@ body{
 }
 
 .hero{
-    padding:80px 0 50px;
     text-align:center;
+    padding:80px 0 50px;
 }
 
 .badge{
     display:inline-block;
     padding:8px 14px;
+    border-radius:999px;
     background:#1e293b;
     border:1px solid var(--border);
-    border-radius:999px;
     color:#cbd5e1;
     margin-bottom:20px;
+    font-size:.9rem;
 }
 
 h1{
     font-size:clamp(2rem,5vw,3.5rem);
-    margin-bottom:12px;
+    margin-bottom:14px;
 }
 
 .subtitle{
-    color:var(--muted);
-    max-width:700px;
+    max-width:720px;
     margin:auto;
+    color:var(--muted);
+}
+
+.flash-section{
+    text-align:center;
+    margin:20px 0 50px;
+}
+
+.flash-title{
+    font-size:1.4rem;
+    margin-bottom:10px;
+}
+
+.flash-desc{
+    color:var(--muted);
+    margin-bottom:24px;
+}
+
+/* ESP Web Tools Button */
+
+esp-web-install-button{
+    display:inline-block;
+}
+
+esp-web-install-button::part(button){
+    background:
+        linear-gradient(
+            135deg,
+            var(--primary),
+            var(--primary2)
+        );
+
+    color:#fff;
+    border:none;
+    border-radius:14px;
+
+    padding:14px 34px;
+
+    min-width:180px;
+
+    font-size:16px;
+    font-weight:600;
+
+    cursor:pointer;
+
+    box-shadow:
+        0 6px 18px rgba(37,99,235,.25);
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease;
+}
+
+esp-web-install-button::part(button):hover{
+    transform:translateY(-2px);
+
+    box-shadow:
+        0 10px 24px rgba(37,99,235,.35);
+}
+
+.button-row{
+    margin-top:22px;
+
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
+.btn{
+    text-decoration:none;
+    color:white;
+
+    background:#1e293b;
+
+    border:1px solid var(--border);
+
+    padding:12px 20px;
+
+    border-radius:12px;
+
+    transition:.2s;
+}
+
+.btn:hover{
+    transform:translateY(-2px);
 }
 
 .card-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    grid-template-columns:
+        repeat(auto-fit,minmax(300px,1fr));
+
     gap:24px;
-    margin-top:40px;
+
+    margin-top:30px;
 }
 
 .card{
     background:var(--card);
+
     border:1px solid var(--border);
+
     border-radius:18px;
+
     padding:24px;
 }
 
 .card h2{
-    margin-bottom:16px;
+    margin-bottom:14px;
     font-size:1.2rem;
 }
 
@@ -113,241 +210,190 @@ h1{
     padding-left:18px;
 }
 
-.flash-section{
-    text-align:center;
-    margin:40px 0;
-}
-
-esp-web-install-button{
-    --esp-tools-button-color: white;
-}
-
-esp-web-install-button::part(button){
-    background:
-    linear-gradient(
-        135deg,
-        var(--primary),
-        var(--primary2)
-    );
-
-    color:white;
-    border:none;
-    border-radius:14px;
-    padding:14px 28px;
-    font-size:16px;
-    font-weight:600;
-    cursor:pointer;
-
-    box-shadow:
-    0 6px 20px rgba(37,99,235,.25);
-
-    transition:
-    transform .2s ease,
-    box-shadow .2s ease;
-}
-
-esp-web-install-button::part(button):hover{
-    transform:translateY(-2px);
-
-    box-shadow:
-    0 10px 25px rgba(37,99,235,.35);
-}
-
-.button-row{
-    display:flex;
-    justify-content:center;
-    gap:12px;
-    flex-wrap:wrap;
-    margin-top:20px;
-}
-
-.btn{
-    text-decoration:none;
-    color:white;
-    background:#1e293b;
-    border:1px solid #334155;
-    padding:12px 20px;
-    border-radius:12px;
-}
-
 .warning{
-    background:#2b1d1d;
     border:1px solid #7f1d1d;
+    background:#2b1d1d;
 }
 
 .footer{
     text-align:center;
-    padding:40px 0;
+    padding:50px 0 40px;
     color:#94a3b8;
+}
+
+.footer small{
+    display:block;
+    margin-top:6px;
 }
 
 @media(max-width:768px){
 
-.card-grid{
-    grid-template-columns:1fr;
-}
+    .hero{
+        padding-top:50px;
+    }
 
-.hero{
-    padding-top:50px;
-}
-
+    .card-grid{
+        grid-template-columns:1fr;
+    }
 }
 </style>
+
 </head>
 
 <body>
 
 <div class="container">
 
+```
 <section class="hero">
 
-<div class="badge">
-SecureKey by techiesms
-</div>
+    <div class="badge">
+        SecureKey • techiesms
+    </div>
 
-<h1>SecureKey Firmware Installer</h1>
+    <h1>SecureKey Firmware Installer</h1>
 
-<p class="subtitle">
-Flash SecureKey directly from Chrome or Edge using ESP Web Tools.
-No Arduino IDE. No PlatformIO. No desktop flasher required.
-</p>
+    <p class="subtitle">
+        Install SecureKey directly from your browser using ESP Web Tools.
+        No Arduino IDE, PlatformIO, or desktop flasher required.
+    </p>
 
 </section>
 
 <section class="flash-section">
 
-<h2>Install Firmware</h2>
+    <h2 class="flash-title">
+        Flash Firmware
+    </h2>
 
-<br>
+    <p class="flash-desc">
+        Connect your ESP32-S3 device via USB and click Connect.
+    </p>
 
-<esp-web-install-button manifest="manifest.json">
-</esp-web-install-button>
+    <esp-web-install-button manifest="manifest.json">
+        Connect
+    </esp-web-install-button>
 
-<div class="button-row">
+    <div class="button-row">
 
-<a
-class="btn"
-href="#instructions">
-Installation Guide
-</a>
+        <a href="#instructions" class="btn">
+            Installation Guide
+        </a>
 
-<a
-class="btn"
-href="#tutorial">
-Watch Tutorial
-</a>
+        <a href="#tutorial" class="btn">
+            Watch Tutorial
+        </a>
 
-</div>
+    </div>
 
 </section>
 
 <div class="card-grid">
 
-<div class="card">
+    <div class="card">
 
-<h2>Supported Hardware</h2>
+        <h2>Supported Hardware</h2>
 
-<p>
-Board:
-</p>
+        <p><strong>Board:</strong></p>
+        <p>MaTouch ESP32-S3 AMOLED with Touch 1.8” FT3168</p>
 
-<br>
+        <br>
 
-<p>
-MaTouch ESP32-S3 AMOLED with Touch 1.8” FT3168
-</p>
+        <p><strong>Chip Family:</strong></p>
+        <p>ESP32-S3</p>
 
-<br>
+    </div>
 
-<p>
-Chip Family:
-ESP32-S3
-</p>
+    <div class="card" id="instructions">
 
-</div>
+        <h2>Installation Steps</h2>
 
-<div class="card" id="instructions">
+        <ul>
+            <li>Connect the device using a USB data cable.</li>
+            <li>Open Chrome, Edge, Brave, or Opera.</li>
+            <li>Click the Connect button.</li>
+            <li>Select the ESP32 serial port.</li>
+            <li>Allow firmware installation.</li>
+            <li>Wait for flashing to complete.</li>
+            <li>The device will reboot automatically.</li>
+        </ul>
 
-<h2>Installation Steps</h2>
+    </div>
 
-<ul>
-<li>Connect board via USB.</li>
-<li>Open Chrome or Edge.</li>
-<li>Click Flash Firmware.</li>
-<li>Select serial port.</li>
-<li>Install firmware.</li>
-<li>Wait until flashing completes.</li>
-<li>Device will reboot automatically.</li>
-</ul>
+    <div class="card">
 
-</div>
+        <h2>Browser Compatibility</h2>
 
-<div class="card">
+        <ul>
+            <li>Google Chrome</li>
+            <li>Microsoft Edge</li>
+            <li>Brave Browser</li>
+            <li>Opera Browser</li>
+            <li>Web Serial API support required</li>
+        </ul>
 
-<h2>Browser Requirements</h2>
+    </div>
 
-<ul>
-<li>Google Chrome</li>
-<li>Microsoft Edge</li>
-<li>Opera</li>
-<li>Brave</li>
-<li>Web Serial enabled browser</li>
-</ul>
+    <div class="card warning">
 
-</div>
+        <h2>Important Notes</h2>
 
-<div class="card warning">
+        <ul>
+            <li>Use a USB data cable.</li>
+            <li>Close Arduino IDE Serial Monitor.</li>
+            <li>Disconnect other serial tools.</li>
+            <li>Do not unplug during flashing.</li>
+            <li>Use direct USB ports when possible.</li>
+        </ul>
 
-<h2>Important</h2>
+    </div>
 
-<ul>
-<li>Use a data USB cable.</li>
-<li>Close Arduino IDE.</li>
-<li>Disconnect serial monitors.</li>
-<li>Avoid USB hubs if possible.</li>
-<li>Keep device powered during flashing.</li>
-</ul>
+    <div class="card" id="tutorial">
 
-</div>
+        <h2>Tutorial Video</h2>
 
-<div class="card" id="tutorial">
+        <p>
+            Add your YouTube tutorial link below.
+        </p>
 
-<h2>Tutorial Video</h2>
+        <br>
 
-<p>
-Add your tutorial link below:
-</p>
+        <a
+            class="btn"
+            href="#"
+            target="_blank">
+            Open Tutorial
+        </a>
 
-<br>
+    </div>
 
-<a
-class="btn"
-href="#"
-target="_blank">
-Open Tutorial
-</a>
+    <div class="card">
 
-</div>
+        <h2>Troubleshooting</h2>
 
-<div class="card">
+        <ul>
+            <li>Try a different USB cable.</li>
+            <li>Install CP210x or CH340 drivers.</li>
+            <li>Refresh browser and reconnect.</li>
+            <li>Enter bootloader mode manually.</li>
+            <li>Verify manifest.json loads correctly.</li>
+            <li>Verify BIN file URLs are accessible.</li>
+        </ul>
 
-<h2>Troubleshooting</h2>
-
-<ul>
-<li>Try another USB cable.</li>
-<li>Install USB drivers.</li>
-<li>Enter bootloader mode manually.</li>
-<li>Refresh browser and retry.</li>
-<li>Verify firmware files uploaded correctly.</li>
-</ul>
-
-</div>
+    </div>
 
 </div>
 
 <div class="footer">
-© 2026 techiesms • SecureKey Firmware Installer
+
+    © 2026 techiesms
+
+    <small>
+        SecureKey Firmware Installer
+    </small>
+
 </div>
+```
 
 </div>
 
