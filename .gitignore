@@ -1,7 +1,6 @@
 # ── Arduino / ESP32 build artifacts ──────────────────────────
 build/
 build_cli/
-*.bin
 *.elf
 *.map
 *.hex
