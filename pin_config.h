@@ -1,12 +1,12 @@
 // =============================================================
-//  MaTouch ESP32-S3 AMOLED 1.8" FT3168  —  Pin Configuration
+//  Waveshare ESP32-S3 Touch AMOLED 1.8" V2 — Pin Configuration
 //  Source: Official Makerfabs schematic V1.0 (2024-08-05, Peter)
 //  Verified pin-by-pin from netlist on 2026-05-22.
 // =============================================================
 //
 //  Board: MaTouch ESP32-S3 R8 (8MB PSRAM, 16MB Flash)
-//  Display: SH8601 368×448 AMOLED via QSPI
-//  Touch:   FT3168 capacitive, I2C addr 0x38
+//  Display: CO5300 368×448 AMOLED via QSPI
+//  Touch:   CST820 capacitive, I2C addr 0x15
 //
 // =============================================================
 
@@ -16,30 +16,34 @@
 #define LCD_WIDTH       368
 #define LCD_HEIGHT      448
 
-#define LCD_CS          4    // O_CS
-#define LCD_SCK         5    // O_CLK
-#define LCD_SDIO0       7    // O_I0  (D0)
-#define LCD_SDIO1       10   // O_I1  (D1)
-#define LCD_SDIO2       11   // O_I2  (D2)
-#define LCD_SDIO3       12   // O_I3  (D3)
-#define LCD_RST         40   // O_RST  (MTDO strap pin — fine after boot)
-#define LCD_TE          6    // O_TE   (tear effect, can be -1 if unused)
-#define LCD_EN          9    // O_PWR_EN  *** MUST drive HIGH to power AMOLED ***
+#define LCD_CS          12
+#define LCD_SCK         11
+#define LCD_SDIO0       4
+#define LCD_SDIO1       5
+#define LCD_SDIO2       6
+#define LCD_SDIO3       7
+#define LCD_RST         -1
+#define LCD_TE          -1
 
 // ---------------- Capacitive Touch FT3168 (I2C) ----------------------------
-#define IIC_SDA         2
-#define IIC_SCL         1
-#define TP_INT          13   // O_TP_INT
-#define TP_RST          14   // O_TP_RST
-#define FT3168_ADDR     0x38
+#define IIC_SDA         15
+#define IIC_SCL         14
+#define TP_INT          21
+#define TP_RST          -1
+#define CST820_ADDR     0x15
+
+#define IOX_ADDR        0x20
+#define IOX_LCD_RST     (1u << 0)
+#define IOX_PWR_EN      (1u << 1)
+#define IOX_TP_RST      (1u << 2)
 
 // ---------------- WS2812 Addressable RGB LED -------------------------------
-#define RGB_LED_PIN     3    // LED_2812
-#define RGB_LED_COUNT   1
+#define RGB_LED_PIN     0
+#define RGB_LED_COUNT   0
 
 // ---------------- Buttons --------------------------------------------------
-#define USER_BTN_PIN    8    // SW2 "Key" (active LOW with external pull-up)
-#define BOOT_BTN_PIN    0    // SW4 — also strapping pin
+#define USER_BTN_PIN    0
+#define BOOT_BTN_PIN    0
 // Reset (SW3) is hardware-only on CHIP_PU, not GPIO-accessible
 
 // ---------------- USB (fixed on ESP32-S3, do not change) -------------------
