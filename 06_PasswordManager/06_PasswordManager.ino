@@ -1,8 +1,8 @@
 /*
  * SecureKey — Hardware Password Manager  (monochrome edition)
  * ─────────────────────────────────────────────────────────────────────
- *  Board   : MaTouch ESP32-S3 AMOLED 1.8"  (368×448, SH8601 QSPI)
- *  Touch   : FT3168 capacitive
+ *  Board   : Waveshare ESP32-S3 Touch AMOLED 1.8" V2 (368×448, CO5300 QSPI)
+ *  Touch   : CST820 capacitive
  *  Store   : FFat /db.bin   (256 B/record × MAX_PASSWORDS = 30000)
  *  Setings : NVS  "skset" namespace
  *
@@ -77,11 +77,33 @@ extern "C" {
 // ── Hardware objects ─────────────────────────────────────────────────
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(
     LCD_CS, LCD_SCK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
-Arduino_GFX    *out = new Arduino_SH8601(
-    bus, LCD_RST, 0, false, LCD_WIDTH, LCD_HEIGHT);
+Arduino_GFX *out = new Arduino_CO5300(
+  bus, LCD_RST, 0, false, LCD_WIDTH, LCD_HEIGHT, 16, 0, 0, 0);
 Arduino_Canvas *gfx = new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, out);
 Adafruit_NeoPixel led(RGB_LED_COUNT, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
 Preferences      prefs;
+
+static uint8_t ioxOutput = 0;
+static bool ioxWrite(uint8_t reg, uint8_t value) {
+  Wire.beginTransmission(IOX_ADDR); Wire.write(reg); Wire.write(value);
+  return Wire.endTransmission() == 0;
+}
+static void ioxSet(uint8_t mask, bool high) {
+  if (high) ioxOutput |= mask; else ioxOutput &= (uint8_t)~mask;
+  ioxWrite(0x01, ioxOutput);
+}
+static bool initWaveshareV2Board() {
+  Wire.begin(IIC_SDA, IIC_SCL, 400000);
+  if (!ioxWrite(0x03, 0x00)) {
+    Serial.println("[BOARD] TCA9554 not found at 0x20"); return false;
+  }
+  ioxOutput = IOX_LCD_RST | IOX_PWR_EN | IOX_TP_RST;
+  ioxWrite(0x01, ioxOutput); delay(100);
+  ioxOutput = 0; ioxWrite(0x01, ioxOutput); delay(300);
+  ioxOutput = IOX_LCD_RST | IOX_PWR_EN | IOX_TP_RST;
+  ioxWrite(0x01, ioxOutput); delay(100);
+  Serial.println("[BOARD] Waveshare V2 TCA9554 ready"); return true;
+}
 
 inline void flushScreen() { gfx->flush(); }
 
@@ -707,10 +729,7 @@ void setup() {
 
   led.begin();  led.setBrightness(40);  led.clear(); led.show();
 
-  pinMode(LCD_EN, OUTPUT);  digitalWrite(LCD_EN, HIGH);  delay(50);
-  pinMode(TP_RST, OUTPUT);
-  digitalWrite(TP_RST, LOW); delay(10);
-  digitalWrite(TP_RST, HIGH); delay(100);
+  initWaveshareV2Board();
 
   if (!gfx->begin()) {
     // The PSRAM double-buffer canvas could not initialise — almost always
@@ -759,7 +778,6 @@ void setup() {
   bootRevealIn();
   uint32_t bootSplashMs = millis();
 
-  Wire.begin(IIC_SDA, IIC_SCL, 400000);
   pinMode(USER_BTN_PIN, INPUT_PULLUP);
 
   // FT3168 warm-up: fresh out of reset the touch controller can stay silent
@@ -770,15 +788,15 @@ void setup() {
   {
     bool ack = false;
     for (uint32_t t0 = millis(); millis() - t0 < 600 && !ack; ) {
-      Wire.beginTransmission((uint8_t)FT3168_ADDR);
+      Wire.beginTransmission((uint8_t)CST820_ADDR);
       ack = (Wire.endTransmission() == 0);
       if (!ack) delay(25);
     }
     if (!ack) {
-      digitalWrite(TP_RST, LOW);  delay(8);
-      digitalWrite(TP_RST, HIGH); delay(150);
+      ioxSet(IOX_TP_RST, false);  delay(8);
+      ioxSet(IOX_TP_RST, true); delay(150);
     }
-    Serial.printf("[TOUCH] FT3168 %s\n", ack ? "ready" : "reset-pulsed");
+    Serial.printf("[TOUCH] CST820 %s\n", ack ? "ready" : "reset-pulsed");
   }
 
   Serial.printf("[MEM] PSRAM free: %u\n", ESP.getFreePsram());

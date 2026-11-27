@@ -1,23 +1,23 @@
 // =============================================================
-//  touch_input.ino  —  FT3168 capacitive touch + state machine
+//  touch_input.ino  —  CST820 capacitive touch + state machine
 //  Extended from 05_UI_Mockup to add live drag callback.
 // =============================================================
 
 uint8_t ftReadReg(uint8_t r) {
-  Wire.beginTransmission((uint8_t)FT3168_ADDR);
+  Wire.beginTransmission((uint8_t)CST820_ADDR);
   Wire.write(r);
   Wire.endTransmission(false);
-  Wire.requestFrom((uint8_t)FT3168_ADDR, (uint8_t)1);
+  Wire.requestFrom((uint8_t)CST820_ADDR, (uint8_t)1);
   return Wire.available() ? Wire.read() : 0;
 }
 
 bool ftReadTouch(uint16_t &x, uint16_t &y) {
   uint8_t n = ftReadReg(0x02);
   if (n == 0 || n > 5) return false;
-  Wire.beginTransmission((uint8_t)FT3168_ADDR);
+  Wire.beginTransmission((uint8_t)CST820_ADDR);
   Wire.write(0x03);
   Wire.endTransmission(false);
-  Wire.requestFrom((uint8_t)FT3168_ADDR, (uint8_t)4);
+  Wire.requestFrom((uint8_t)CST820_ADDR, (uint8_t)4);
   if (Wire.available() < 4) return false;
   uint8_t xh = Wire.read(), xl = Wire.read();
   uint8_t yh = Wire.read(), yl = Wire.read();
@@ -38,12 +38,12 @@ void pollTouch() {
   // a power-cycle. One extra address byte per poll (~25 µs) when healthy.
   static uint8_t  ftDead = 0;
   static uint32_t ftQuietUntil = 0;
-  Wire.beginTransmission((uint8_t)FT3168_ADDR);
+  Wire.beginTransmission((uint8_t)CST820_ADDR);
   if (Wire.endTransmission() != 0) {
     if (++ftDead >= 25) {                    // ~0.4 s of consecutive NACKs
       Serial.println("[TOUCH] FT3168 not ACKing — reset pulse");
-      digitalWrite(TP_RST, LOW);  delay(5);
-      digitalWrite(TP_RST, HIGH); delay(120);
+      ioxSet(IOX_TP_RST, false);  delay(5);
+      ioxSet(IOX_TP_RST, true); delay(120);
       ftDead = 0;
       // The controller recalibrates its capacitive baseline after a reset —
       // reads during that window are garbage (ghost touches). Stay quiet.
